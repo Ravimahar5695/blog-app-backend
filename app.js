@@ -10,6 +10,7 @@ const userRoutes = require("./routes/user");
 const postRoutes = require("./routes/post");
 const categoryRoutes = require("./routes/category");
 const adminRoutes = require("./routes/admin");
+const contactRoutes = require("./routes/contact");
 
 mongoose.connect(process.env.DATABASE).then(() => {
     console.log("Successfully connected to database");
@@ -26,6 +27,7 @@ app.use("/", userRoutes);
 app.use("/", postRoutes);
 app.use("/", categoryRoutes);
 app.use("/", adminRoutes);
+app.use("/", contactRoutes);
 
 app.get("/", (req, res) => {
     res.send("Welcome");

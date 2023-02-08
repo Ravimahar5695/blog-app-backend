@@ -1,6 +1,6 @@
 const User = require("../models/user");
 const { validationResult } = require('express-validator');
-const crypto = require('node:crypto');
+const crypto = require('crypto');
 const jwt = require("jsonwebtoken");
 var { expressjwt: expressjwt } = require("express-jwt");
 
