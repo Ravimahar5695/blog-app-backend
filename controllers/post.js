@@ -39,7 +39,7 @@ exports.getAllPosts = (req, res) => {
         const limit = req.params.limit;
         const pageNumber = req.params.pageNumber;
         const skip = (pageNumber - 1) * limit;
-        Post.find().skip(skip).limit(limit).populate("user").populate("category").exec((err, posts) => {
+        Post.find().skip(skip).limit(limit).sort({_id: -1}).populate("user").populate("category").exec((err, posts) => {
             if(err){
                 res.json({
                     error: "Unknown error"
@@ -78,7 +78,7 @@ exports.getPostsByCategoryId = (req, res) => {
                     res.json(posts);
                 }
             }
-        }).populate("category", "name");   
+        }).sort({_id: -1}).populate("category", "name");   
     } catch (error) {
         res.json({
             error: error.message
@@ -102,7 +102,7 @@ exports.getPostsByUserId = (req, res) => {
                     res.json(posts);
                 }
             }
-        }).populate("category", "name");   
+        }).sort({_id: -1}).populate("category", "name");   
     } catch (error) {
         res.json({
             error: error.message
