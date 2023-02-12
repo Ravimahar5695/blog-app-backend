@@ -1,4 +1,6 @@
 const User = require("../models/user");
+const formidable = require('formidable');
+const fs = require("fs");
 
 exports.getUserById = (req, res, next, id) => {
     try {
@@ -50,5 +52,49 @@ exports.getAllUsers = (req, res) => {
         res.json({
             error: error.message
         });
+    }
+}
+
+exports.editProfile = (req, res) => {
+    const form = formidable({ multiples: true });
+    form.parse(req, (err, fields, files) => {
+        if(err){
+            res.json(err);
+        } else{
+            const {bio, mobile, facebook, instagram, twitter, linkedin, website, youtube} = fields;
+            const {picture} = files;
+            const user = req.profile;
+            user.profile.bio = bio;
+            user.profile.mobile = mobile;
+            if(picture){
+                user.profile.profile_picture.data = fs.readFileSync(picture.filepath);
+                user.profile.profile_picture.contentType = picture.mimetype;
+            }
+            user.profile.social.facebook = facebook;
+            user.profile.social.instagram = instagram;
+            user.profile.social.twitter = twitter;
+            user.profile.social.linkedin = linkedin;
+            user.profile.social.youtube = youtube;
+            user.profile.social.website = website;
+            
+            user.save((err, user) => {
+                if(err){
+                    res.json({
+                        error: err
+                    });
+                } else{
+                    res.json(user);
+                }
+            });
+        }
+    });
+}
+
+exports.getProfilePicture = (req, res, next) => {
+    if(req.profile.profile.profile_picture.data){
+        res.set("Content-Type", req.profile.profile.profile_picture.contentType);
+        res.send(req.profile.profile.profile_picture.data);
+    } else{
+        next();
     }
 }
