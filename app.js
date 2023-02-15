@@ -30,7 +30,7 @@ app.use("/", adminRoutes);
 app.use("/", contactRoutes);
 
 app.get("/", (req, res) => {
-    res.send("Welcome");
+    res.send("Blog App Backend");
 });
 
 app.listen(process.env.PORT || 4500, () => {

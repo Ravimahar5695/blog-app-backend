@@ -4,6 +4,7 @@ const formidable = require('formidable');
 const fs = require("fs");
 const _ = require('lodash');
 const uniqid = require('uniqid');
+const {date} = require("../controllers/date");
 
 exports.getPostById = (req, res, next, id) => {
     try {
@@ -132,7 +133,8 @@ exports.createPost = (req, res) => {
                     title: title,
                     description: description,
                     category: category,
-                    user: req.profile._id
+                    user: req.profile._id,
+                    date: date()
                 });
                 
                 if(files.picture){
@@ -238,7 +240,7 @@ exports.comment = (req, res) => {
         } else{
             const uniqId = uniqid();
             const {name, email, comment} = req.body;
-            const newComment = {uniqId, name, email, comment}
+            const newComment = {uniqId, name, email, comment, date: date()}
             Post.findOneAndUpdate({
                 _id: req.post._id
             }, {

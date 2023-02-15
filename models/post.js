@@ -24,6 +24,7 @@ const postSchema = mongoose.Schema({
         ref: "Category",
         required: true
     },
+    date: String,
     comments: {
         type: Array,
         default: []
