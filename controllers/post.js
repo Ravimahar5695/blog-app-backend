@@ -5,6 +5,7 @@ const fs = require("fs");
 const _ = require('lodash');
 const uniqid = require('uniqid');
 const {date} = require("../controllers/date");
+const {google} = require("googleapis");
 
 exports.getPostById = (req, res, next, id) => {
     try {
@@ -120,10 +121,36 @@ exports.getPicture = (req, res, next) => {
     }
 }
 
+const uploadFile = async (file) => {
+    const driveService = await google.drive({
+        version: "v3",
+        auth: new google.auth.GoogleAuth({
+            keyFile: "./google-api-key.json",
+            scopes: ["https://www.googleapis.com/auth/drive"]
+        })
+    });
+    const response = await driveService.files.create({
+        resource: {
+            name: file.originalFilename,
+            parents: [process.env.GOOGLE_DRIVE_FOLDER_ID]
+        },
+        media: {
+            mimetype: file.mimetype,
+            body: fs.createReadStream(file.filepath)
+        },
+        field: "id"
+    });
+    var result = await driveService.files.get({
+        fileId: response.data.id
+    });
+
+    return `https://drive.google.com/uc?export=view&id=${result.data.id}`
+}
+
 exports.createPost = (req, res) => {
     try {
         const form = formidable({ multiples: true });
-        form.parse(req, (err, fields, files) => {
+        form.parse(req, async (err, fields, files) => {
         if (err) {
             res.json(err);
         } else{
@@ -140,12 +167,10 @@ exports.createPost = (req, res) => {
                 if(files.picture){
                     if(files.picture.size > 3000000){
                         return res.json({
-                            error: "File size too large"
+                            error: "Image size should be less than 3Mb"
                         });
                     } else{
-
-                        newPost.picture.data = fs.readFileSync(files.picture.filepath);
-                        newPost.picture.contentType = files.picture.mimetype;
+                        newPost.pictureUrl = await uploadFile(files.picture);
                     }
                 }
     
@@ -175,21 +200,19 @@ exports.createPost = (req, res) => {
 exports.updatePost = (req, res) => {
     try {
         const form = formidable({ multiples: true });
-        form.parse(req, (err, fields, files) => {
+        form.parse(req, async (err, fields, files) => {
             if (err) {
                 res.json(err);
             } else{
                 let newPost = req.post;
                 newPost = _.extend(newPost, fields)
-                const {title, description, category} = fields;
                 if(files.picture){
                     if(files.picture.size > 3000000){
                         return res.json({
-                            error: "File size too large"
+                            error: "File size should be less than 3MB"
                         });
                     } else{
-                        newPost.picture.data = fs.readFileSync(files.picture.filepath);
-                        newPost.picture.contentType = files.picture.mimetype;
+                        newPost.pictureUrl = await uploadFile(files.picture);
                     }
                 }
                 newPost.save((err, post) => {
