@@ -7,6 +7,14 @@ const uniqid = require('uniqid');
 const {date} = require("../controllers/date");
 const {google} = require("googleapis");
 
+const auth = new google.auth.OAuth2(process.env.CLIENT_ID, process.env.CLIENT_SECRET, process.env.REDIRECT_URI);
+auth.setCredentials({refresh_token: process.env.REFRESH_TOKEN});
+
+const drive = google.drive({
+    version: "v3",
+    auth
+});
+
 exports.getPostById = (req, res, next, id) => {
     try {
         Post.findOne({_id: id}).populate("category").populate("user").exec((err, post) => {
@@ -112,39 +120,25 @@ exports.getPostsByUserId = (req, res) => {
     }
 }
 
-exports.getPicture = (req, res, next) => {
-    if(req.post.picture.data){
-        res.set("Content-Type", req.post.picture.contentType);
-        res.send(req.post.picture.data);
-    } else{
-        next();
-    }
-}
-
 const uploadFile = async (file) => {
-    const driveService = await google.drive({
-        version: "v3",
-        auth: new google.auth.GoogleAuth({
-            keyFile: "./google-api-key.json",
-            scopes: ["https://www.googleapis.com/auth/drive"]
-        })
-    });
-    const response = await driveService.files.create({
-        resource: {
+    const response = await drive.files.create({
+        requestBody: {
             name: file.originalFilename,
-            parents: [process.env.GOOGLE_DRIVE_FOLDER_ID]
+            mimeType: file.mimeType,
+            parents: [process.env.POST_PICTURE_FOLDER_ID]
         },
         media: {
             mimetype: file.mimetype,
             body: fs.createReadStream(file.filepath)
-        },
-        field: "id"
+        }
     });
-    var result = await driveService.files.get({
+    var result = await drive.files.get({
         fileId: response.data.id
     });
-
-    return `https://drive.google.com/uc?export=view&id=${result.data.id}`
+    return {
+        url: `https://drive.google.com/uc?export=view&id=${result.data.id}`,
+        id: result.data.id
+    }
 }
 
 exports.createPost = (req, res) => {
@@ -170,7 +164,9 @@ exports.createPost = (req, res) => {
                             error: "Image size should be less than 3Mb"
                         });
                     } else{
-                        newPost.pictureUrl = await uploadFile(files.picture);
+                        const {url, id} = await uploadFile(files.picture);
+                        newPost.picture.url = url;
+                        newPost.picture.id = id;
                     }
                 }
     
@@ -197,6 +193,12 @@ exports.createPost = (req, res) => {
     }
 }
 
+const deleteFile = async (id) => {
+    const response = await drive.files.delete({
+        fileId: id
+    });
+}
+
 exports.updatePost = (req, res) => {
     try {
         const form = formidable({ multiples: true });
@@ -212,7 +214,10 @@ exports.updatePost = (req, res) => {
                             error: "File size should be less than 3MB"
                         });
                     } else{
-                        newPost.pictureUrl = await uploadFile(files.picture);
+                        await deleteFile(req.post.picture.id)
+                        const {url, id} = await uploadFile(files.picture);
+                        newPost.picture.url = url;
+                        newPost.picture.id = id;
                     }
                 }
                 newPost.save((err, post) => {
@@ -234,7 +239,7 @@ exports.updatePost = (req, res) => {
 }
 
 exports.deletePost = (req, res) => {
-    Post.findOneAndDelete({_id: req.post._id, user: req.profile._id}, (err, success) => {
+    Post.findOneAndDelete({_id: req.post._id, user: req.profile._id}, async (err, success) => {
         if(err){
             res.json({
                 error: "Unknown error. Please try after some time"
@@ -245,6 +250,7 @@ exports.deletePost = (req, res) => {
                     error: "You can't delete this post"
                 });
             } else{
+                await deleteFile(req.post.picture.id);
                 res.json({
                     message: "Post deleted successfully"
                 });

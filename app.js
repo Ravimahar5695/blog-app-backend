@@ -29,9 +29,12 @@ app.use("/", categoryRoutes);
 app.use("/", adminRoutes);
 app.use("/", contactRoutes);
 
+
+
 app.get("/", (req, res) => {
     res.send("Blog App Backend");
 });
+
 
 app.listen(process.env.PORT || 4500, () => {
     console.log(`App is running...`);
