@@ -24,9 +24,9 @@ const userSchema = mongoose.Schema(
     },
     profile: {
       bio: String,
-      profile_picture: {
-        data: Buffer,
-        contentType: String,
+      picture: {
+        url: String,
+        id: String
       },
       mobile: String,
       social: {

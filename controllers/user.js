@@ -1,6 +1,15 @@
 const User = require("../models/user");
 const formidable = require('formidable');
 const fs = require("fs");
+const {google} = require("googleapis");
+
+const auth = new google.auth.OAuth2(process.env.CLIENT_ID, process.env.CLIENT_SECRET, process.env.REDIRECT_URI);
+auth.setCredentials({refresh_token: process.env.REFRESH_TOKEN});
+
+const drive = google.drive({
+    version: "v3",
+    auth
+});
 
 exports.getUserById = (req, res, next, id) => {
     try {
@@ -55,9 +64,37 @@ exports.getAllUsers = (req, res) => {
     }
 }
 
+const uploadFile = async (file) => {
+    const response = await drive.files.create({
+        requestBody: {
+            name: file.originalFilename,
+            mimeType: file.mimeType,
+            parents: [process.env.PROFILE_PICTURE_FOLDER_ID]
+        },
+        media: {
+            mimetype: file.mimetype,
+            body: fs.createReadStream(file.filepath)
+        }
+    });
+    var result = await drive.files.get({
+        fileId: response.data.id
+    });
+    return {
+        url: `https://drive.google.com/uc?export=view&id=${result.data.id}`,
+        id: result.data.id
+    }
+}
+
+
+const deleteFile = async (id) => {
+    const response = await drive.files.delete({
+        fileId: id
+    });
+}
+
 exports.editProfile = (req, res) => {
     const form = formidable({ multiples: true });
-    form.parse(req, (err, fields, files) => {
+    form.parse(req, async (err, fields, files) => {
         if(err){
             res.json(err);
         } else{
@@ -67,8 +104,18 @@ exports.editProfile = (req, res) => {
             user.profile.bio = bio;
             user.profile.mobile = mobile;
             if(picture){
-                user.profile.profile_picture.data = fs.readFileSync(picture.filepath);
-                user.profile.profile_picture.contentType = picture.mimetype;
+                if(files.picture.size > 1000000){
+                    return res.json({
+                        error: "Image size should be greater than 1Mb"
+                    });
+                } else{
+                    if(user.profile.picture.id){
+                        deleteFile(user.profile.picture.id);
+                    }
+                    const {url, id} = await uploadFile(picture)
+                    user.profile.picture.url = url;
+                    user.profile.picture.id = id;
+                }
             }
             user.profile.social.facebook = facebook;
             user.profile.social.instagram = instagram;
@@ -88,13 +135,4 @@ exports.editProfile = (req, res) => {
             });
         }
     });
-}
-
-exports.getProfilePicture = (req, res, next) => {
-    if(req.profile.profile.profile_picture.data){
-        res.set("Content-Type", req.profile.profile.profile_picture.contentType);
-        res.send(req.profile.profile.profile_picture.data);
-    } else{
-        next();
-    }
 }

@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const {getUserById, getUser, getAllUsers, editProfile, getProfilePicture} = require("../controllers/user");
+const {getUserById, getUser, getAllUsers, editProfile} = require("../controllers/user");
 const {isSignedIn, isAuthenticated, isAdmin} = require("../controllers/auth");
 const { body } = require('express-validator');
 
@@ -11,7 +11,5 @@ router.get("/user/:userId", getUser);
 router.get("/users", getAllUsers);
 
 router.post("/user/:userId/profile/edit", isSignedIn, isAuthenticated, editProfile);
-
-router.get("/user/:userId/picture", getProfilePicture);
 
 module.exports = router;

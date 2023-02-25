@@ -161,7 +161,7 @@ exports.createPost = (req, res) => {
                 if(files.picture){
                     if(files.picture.size > 3000000){
                         return res.json({
-                            error: "Image size should be less than 3Mb"
+                            error: "Image size should be greater than 3Mb"
                         });
                     } else{
                         const {url, id} = await uploadFile(files.picture);
